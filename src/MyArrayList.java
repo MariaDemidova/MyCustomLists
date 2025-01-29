@@ -1,5 +1,6 @@
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.NoSuchElementException;
 
 /**
  * Динамический массив ArrayList, который реализует MyList
@@ -9,7 +10,7 @@ import java.util.Comparator;
 public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
     private T[] list; //принимает массив любого ссылочного типа
     private int size; //размер массива
-    private final int CAPACITY_SIZE = 10; //размер массива по умолчанию
+    private static final int CAPACITY_SIZE = 10; //размер массива по умолчанию
 
     //Конструктор, где задается размер массива
     public MyArrayList(int capacity) {
@@ -62,7 +63,6 @@ public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
      * @return T возвращает элемент типа T
      * @throws IndexOutOfBoundsException если вышли за пределы листа
      */
-
     @Override
     public T get(int index) {
         //Проверка индекса, что не выходит за пределы
@@ -84,11 +84,15 @@ public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
         if (index < 0 || index >= size) {
             throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
         }
-        //находим по индексу элемент, остальные элементы сдвигаем влево
-        for (int i = index; i < size; i++) {
-            list[i] = list[i + 1];
+        if (index == size - 1) {
+            list[--size] = null; // Если удаляем последний элемент, просто уменьшаем размер и обнуляем последний элемент
+        } else {
+            //если элемент в середине, находим по индексу элемент, остальные элементы сдвигаем влево
+            for (int i = index; i < size; i++) {
+                list[i] = list[i + 1];
+            }
+            list[--size] = null; //обнуляем последний элемент
         }
-        size--;
     }
 
     /**
@@ -96,14 +100,11 @@ public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
      *
      * @param element элемент, который надо удалить
      */
-
     @Override
     public void delete(T element) {
         int pos = index(element);
-
-        if (pos < 0) { // если index(T element) вернет -1, то выходим, говорим, что такого элемента нет
-            System.out.println("Element not found");
-            return;
+        if (pos < 0) { // если index(T element) вернет -1, выбрасывается ошибка
+            throw new NoSuchElementException("Index: " + pos + ", Size: " + size);
         }
         delete(pos);
     }
@@ -134,7 +135,6 @@ public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
      */
     @Override
     public void clear() {
-//        Arrays.fill(list, null); не знаю, можно ли использовать этот метод, если нет, то удаляем вот так
         for (int i = 0; i < size; i++) {
             list[i] = null;
         }
@@ -143,7 +143,7 @@ public class MyArrayList<T extends Comparable<T>> implements MyList<T> {
 
     @Override
     public int size() {
-        return list.length;
+        return size;
     }
 
     /**

@@ -1,33 +1,13 @@
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Класс связанного списка, имплементирует MyList и переопределяет все его методы
  *
  * @param <T> параметры списка должны уметь сравниваться друг с другом
  */
-
 public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
-    /**
-     * Создаем основу связанного списка - внутренний параметризированный класс, из объектов которого состоит список
-     *
-     * @param <T> параметр класса
-     */
-    private static class Node<T> {
-        private T data;
-        private Node<T> next; //следующий узел
-        private Node<T> prev; //предыдущий узел
-
-        /**
-         * Конструктор, который создает узел с ссылками на предыдущий элемент и последующий
-         */
-        public Node(T data) {
-            this.data = data;
-            this.next = null;
-            this.prev = null;
-        }
-    }
-
     private Node<T> head; //первый узел
     private Node<T> tail;// последний узел
     private int size;
@@ -51,12 +31,11 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
         Node<T> newNode = new Node<>(element);
         if (head == null) {
             head = newNode;
-            tail = newNode;
         } else {
             tail.next = newNode;
             newNode.prev = tail;
-            tail = newNode;
         }
+        tail = newNode;
         size++; // Увеличиваем размер списка
     }
 
@@ -91,10 +70,10 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
                 current.prev.next = newNode;
             }
             current.prev = newNode;
-
         }
         size++;
     }
+
     /**
      * Удаляет элемент по порядковому номеру
      *
@@ -102,38 +81,19 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
      */
     @Override
     public void delete(int index) {
+        if (isEmpty()) {
+            return;
+        }
         if (index < 0 || index >= size) {
             throw new IndexOutOfBoundsException("Индекс вне диапазона: " + index);
         }
         if (index == 0) {
-
-            head = head.next;
-            if (head != null) {
-                head.prev = null;
-            }
-
-            if (size == 1) {
-                tail = null;
-            }
-
+            removeHead();
         } else if (index == size - 1) {
-
-            tail = tail.prev;
-            if (tail != null) {
-                tail.next = null;
-            }
-
+            removeTail();
         } else {
-            Node<T> current = getNode(index);
-            if (current.prev != null) {
-                current.prev.next = current.next;
-            }
-            if (current.next != null) {
-                current.next.prev = current.prev;
-            }
-
+            removeNode(getNode(index));
         }
-
         size--;
     }
 
@@ -144,26 +104,19 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
      */
     @Override
     public void delete(T element) {
+        if (isEmpty()) {
+            return;
+        }
         Node<T> current = head;
         while (current != null) {
             if (Objects.equals(current.data, element)) {
                 if (current.prev == null) {
-                    head = current.next;
-                    if (head != null) {
-                        head.prev = null;
-                    }
-
+                    removeHead();
                 } else if (current.next == null) {
-                    tail = current.prev;
-                    if (tail != null) {
-                        tail.next = null;
-                    }
-
+                    removeTail();
                 } else {
-                    current.prev.next = current.next;
-                    current.next.prev = current.prev;
+                    removeNode(current);
                 }
-
                 size--;
                 return;
             }
@@ -172,11 +125,65 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
     }
 
     /**
+     * проверяем, не пуст ли список
+     *
+     * @return true or false
+     */
+    private boolean isEmpty() {
+        return size == 0;
+    }
+
+    /**
+     * Удаление первого элемента
+     */
+    private void removeHead() {
+        if (head != null) {
+            Node<T> nextNode = head.next;
+            if (nextNode != null) {
+                nextNode.prev = null;
+            }
+            head = nextNode;
+            if (isEmpty()) {
+                tail = null;
+            }
+        }
+    }
+
+    /**
+     * Удаление последнего элемента
+     */
+    private void removeTail() {
+        if (tail != null) {
+            Node<T> prevNode = tail.prev;
+            if (prevNode != null) {
+                prevNode.next = null;
+            }
+            tail = prevNode;
+        }
+    }
+
+    /**
+     * Удаление ноды в середине
+     */
+    private void removeNode(Node<T> current) {
+        if (current == null) {
+            return;
+        }
+        if (current.prev != null) {
+            current.prev.next = current.next;
+        }
+        if (current.next != null) {
+            current.next.prev = current.prev;
+        }
+
+        current.prev = null;
+        current.next = null;
+    }
+
+    /**
      * Поиск индекса элемента
      *
      * @param element элемент, индекс которого надо найти
-     *                Возвращать будет индекс
-     * @return int возвращает индекс
      */
     @Override
     public int index(T element) {
@@ -207,23 +214,38 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
     }
 
     /**
-     * Получает элемент по ключу
-     * @param key - ключ
-     * @return возвращает элемент <T>
+     * Находит элемент по ключу в списке.
+     *
+     * @param key Ключ для поиска элемента.
+     * @return Optional, содержащий элемент с указанным ключом, или пустой Optional, если элемент не найден.
      */
-    public T getByKey(T key) {
-        Node<T> current = head;
-        while (current != null) {
-            if (Objects.equals(current.data, key)) {
-                return current.data;
-            }
-            current = current.next;
+    public Optional<T> getByKey(T key) {
+        if (isEmpty()) {
+            return Optional.empty();
         }
-        return null; // Если элемент не найден
+        Node<T> currentNode = head;
+        while (currentNode != null) {
+            if (key == null && currentNode.data == null) {
+                return Optional.ofNullable(currentNode.data);
+            }
+            if (key != null && Objects.equals(currentNode.data, key)) {
+                return Optional.of(currentNode.data);
+            }
+            currentNode = currentNode.next;
+        }
+        return Optional.empty();
     }
 
     @Override
     public void clear() {
+        Node<T> current = head;
+        while (current != null) {
+            Node<T> next = current.next;
+            current.prev = null; // Обнуляем ссылку на предыдущий узел
+            current.next = null; // Обнуляем ссылку на следующий узел
+            current.data = null; //Обнуляем data
+            current = next;
+        }
         tail = null;
         head = null;
         size = 0;
@@ -251,25 +273,22 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
         boolean swapped;
         Node<T> current;
         Node<T> last = null;
-
         do {
             swapped = false;
             current = head;
-
             while (current.next != last) {
                 if (comparator.compare(current.data, current.next.data) > 0) {
-
                     T temp = current.data;
                     current.data = current.next.data;
                     current.next.data = temp;
                     swapped = true;
-
                 }
                 current = current.next;
             }
             last = current;
         } while (swapped);
     }
+
     /**
      * Получаем ноду по индексу (порядковому номеру)
      *
@@ -296,12 +315,43 @@ public class MyLinkedList<T extends Comparable<T>> implements MyList<T> {
         }
         return current;
     }
-    public void printList() {
+
+    @Override
+    public String toString() {
+        if (isEmpty()) {
+            return "[]"; // Если список пуст, возвращаем пустые скобки
+        }
+
+        StringBuilder sb = new StringBuilder("[");
         Node<T> current = head;
         while (current != null) {
-            System.out.print(current.data + " ");
+            sb.append(current.data);
+            if (current.next != null) {
+                sb.append(", ");
+            }
             current = current.next;
         }
-        System.out.println();
+        sb.append("]");
+        return sb.toString();
+    }
+
+    /**
+     * Создаем основу связанного списка - внутренний параметризированный класс, из объектов которого состоит список
+     *
+     * @param <T> параметр класса
+     */
+    private static class Node<T> {
+        private T data;
+        private Node<T> next; //следующий узел
+        private Node<T> prev; //предыдущий узел
+
+        /**
+         * Конструктор, который создает узел с ссылками на предыдущий элемент и последующий
+         */
+        public Node(T data) {
+            this.data = data;
+            this.next = null;
+            this.prev = null;
+        }
     }
 }
